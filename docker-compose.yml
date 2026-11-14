@@ -23,6 +23,18 @@ services:
       - odoo-web-data:/var/lib/odoo
     restart: unless-stopped
 
+  n8n:
+    image: docker.n8n.io/n8nio/n8n
+    ports:
+      - "5678:5678"
+    environment:
+      GENERIC_TIMEZONE: Asia/Dubai
+      TZ: Asia/Dubai
+    volumes:
+      - n8n-data:/home/node/.n8n
+    restart: unless-stopped
+
 volumes:
   odoo-db-data:
   odoo-web-data:
+  n8n-data:
