@@ -50,7 +50,7 @@ Setting: CRM → Configuration → Settings → **Leads** is switched on.
 
 ## 4. Pipeline stages
 
-**New → Qualified → Vehicle Sourced / Inspection → Quotation Sent → Negotiation → Won – Deposit Paid**
+**New → Qualified → Vehicle Sourced / Inspection → Quotation Sent → Negotiation → Won - Deposit Paid**
 
 | # | Stage | Meaning | Exit rule (what must be true to move on) | Stale after* |
 |---|---|---|---|---|
@@ -59,7 +59,7 @@ Setting: CRM → Configuration → Settings → **Leads** is switched on.
 | 3 | **Vehicle Sourced / Inspection** | Matching vehicle(s) found and checked | Vehicle availability and condition confirmed (stock, supplier or inspection report) | 7 days |
 | 4 | **Quotation Sent** | Price sent, including shipping terms (e.g. FOB or CIF) | Customer has replied to the quotation | 5 days |
 | 5 | **Negotiation** | Price, payment terms or deposit under discussion | Deposit received, or the deal is marked lost | 10 days |
-| 6 | **Won – Deposit Paid** | Customer committed and the deposit is received | Final stage. The balance and fulfilment move to Sales and Invoicing. | n/a |
+| 6 | **Won - Deposit Paid** | Customer committed and the deposit is received | Final stage. The balance and fulfilment move to Sales and Invoicing. | n/a |
 
 \* The stale thresholds are starting assumptions, to be adjusted with the sales team.
 
