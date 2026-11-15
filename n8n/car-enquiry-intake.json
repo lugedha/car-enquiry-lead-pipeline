@@ -1,0 +1,313 @@
+{
+  "name": "Car enquiry intake",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "car-enquiry",
+        "authentication": "headerAuth",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "1cf81ca5-b114-4d9b-b2dd-f52143fbcba1",
+      "name": "Webhook",
+      "webhookId": "9e5bfb48-c33f-43a8-96e2-da7dc1f85046",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "Xj0IhzlEkYRcUTz3",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "29e337c2-8b09-4ede-a63a-2d3d5babd8c1",
+              "name": "event_id",
+              "value": "={{ $json.body.event_id }}",
+              "type": "string"
+            },
+            {
+              "id": "fa5b45da-8fd7-4ed5-8390-fc555557357a",
+              "name": "name",
+              "value": "={{ $json.body.lead.name }}",
+              "type": "string"
+            },
+            {
+              "id": "525248fb-0fe7-43b7-a252-885d3a991f59",
+              "name": "phone",
+              "value": "={{ $json.body.lead.phone }}",
+              "type": "string"
+            },
+            {
+              "id": "4d8cd7a7-1a50-4663-a38c-af2704b79a5a",
+              "name": "message",
+              "value": "={{ $json.body.lead.message }}",
+              "type": "string"
+            },
+            {
+              "id": "8466c778-ed7a-4613-a5b3-b157a51e3c5c",
+              "name": "source",
+              "value": "={{ $json.body.lead.source }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        224,
+        0
+      ],
+      "id": "f075a7fb-ad05-4319-a34c-2c6be0dad4bc",
+      "name": "Extract enquiry fields"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://odoo:8069/json/2/crm.lead/search_read",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Odoo-Database",
+              "value": "cars_demo"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"domain\": [[\"stage_id.is_won\", \"=\", false], [\"phone\", \"=\", \"{{ $json.phone }}\"]],\n  \"fields\": [\"id\", \"name\"],\n  \"limit\": 1\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        448,
+        0
+      ],
+      "id": "ac3dec23-ac70-406a-ba50-31c390c2f287",
+      "name": "Find open lead in Odoo",
+      "alwaysOutputData": true,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "BHkPs6gvP069ev1c",
+          "name": "Odoo API key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 4
+          },
+          "conditions": [
+            {
+              "id": "6eb91865-37aa-4a4d-a09a-2846df0ebd9a",
+              "leftValue": "={{ $json.id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "number",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.4,
+      "position": [
+        672,
+        0
+      ],
+      "id": "0e52284c-955c-4c84-9ffc-28e77ab95b96",
+      "name": "Lead already exists"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://odoo:8069/json/2/crm.lead/create",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Odoo-Database",
+              "value": "cars_demo"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"vals_list\": [{\n    \"type\": \"lead\",\n    \"name\": \"Enquiry - {{ $('Extract enquiry fields').item.json.name }} (n8n test)\",\n    \"contact_name\": \"{{ $('Extract enquiry fields').item.json.name }}\",\n    \"phone\": \"{{ $('Extract enquiry fields').item.json.phone }}\",\n    \"description\": \"{{ $('Extract enquiry fields').item.json.message }}\"\n  }]\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        896,
+        96
+      ],
+      "id": "98b2d037-bad3-427c-ac3a-f7dfb40ae23f",
+      "name": "Create lead in Odoo",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "BHkPs6gvP069ev1c",
+          "name": "Odoo API key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://odoo:8069/json/2/crm.lead/message_post",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Odoo-Database",
+              "value": "cars_demo"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"ids\": [{{ $json.id }}],\n  \"body\": \"New enquiry from same contact: {{ $('Extract enquiry fields').item.json.message }}\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        896,
+        -96
+      ],
+      "id": "29c74886-ca0e-4c02-b9a6-0bbe6d3a1284",
+      "name": "Add note to existing lead",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "BHkPs6gvP069ev1c",
+          "name": "Odoo API key"
+        }
+      }
+    }
+  ],
+  "pinData": {
+    "Webhook": [
+      {
+        "json": {
+          "headers": {
+            "host": "localhost:5678",
+            "user-agent": "python-requests/2.34.2",
+            "accept-encoding": "gzip, deflate",
+            "accept": "*/*",
+            "connection": "keep-alive",
+            "x-webhook-secret": "REDACTED",
+            "content-length": "207",
+            "content-type": "application/json"
+          },
+          "params": {},
+          "query": {},
+          "body": {
+            "event_id": "e5ebc791-d760-48ca-8a46-492433a77e08",
+            "type": "lead.created",
+            "lead": {
+              "name": "Test Buyer",
+              "phone": "+971500000000",
+              "message": "Need 5 used Hilux pickups for export",
+              "source": "web_form"
+            }
+          },
+          "webhookUrl": "http://localhost:5678/webhook-test/car-enquiry",
+          "executionMode": "test"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Extract enquiry fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract enquiry fields": {
+      "main": [
+        [
+          {
+            "node": "Find open lead in Odoo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find open lead in Odoo": {
+      "main": [
+        [
+          {
+            "node": "Lead already exists",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lead already exists": {
+      "main": [
+        [
+          {
+            "node": "Add note to existing lead",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create lead in Odoo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "a30a0193-fd6a-4f4a-a393-c1149a9115c3",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "9ce06ae632f299344dc2086c56b7c51547f4e7110719b95ee7d1d76c156f466f"
+  },
+  "nodeGroups": [],
+  "id": "VzuOcGywq92YifTr",
+  "tags": []
+}
