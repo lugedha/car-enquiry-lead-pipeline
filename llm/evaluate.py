@@ -1,7 +1,10 @@
 """Score the lead classifier against test cases with known answers.
 
-Usage:  python llm/evaluate.py [model]
-Example: python llm/evaluate.py gemma3:4b
+Usage:   python llm/evaluate.py [model] [test file]
+Examples: python llm/evaluate.py gemma3:4b
+          python llm/evaluate.py gemma3:4b holdout_cases.json
+
+The test file is looked for in the llm folder. Default: test_cases.json
 
 The vehicle field is free text, so it is not scored.
 On a failure, the raw facts from the LLM are printed, so you can see whether
@@ -28,14 +31,15 @@ def same(got, expected):
 
 def main():
     model = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_MODEL
+    test_file = sys.argv[2] if len(sys.argv) > 2 else "test_cases.json"
     cases = json.loads(
-        (Path(__file__).parent / "test_cases.json").read_text(encoding="utf-8"))
+        (Path(__file__).parent / test_file).read_text(encoding="utf-8-sig"))
 
     correct = {f: 0 for f in FIELDS}
     all_correct = 0
     seconds = []
 
-    print(f"Model: {model} | {len(cases)} test cases\n")
+    print(f"Model: {model} | {test_file} | {len(cases)} test cases\n")
     for case in cases:
         start = time.time()
         got = classify(case["message"], model)
