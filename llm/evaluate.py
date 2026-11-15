@@ -3,7 +3,9 @@
 Usage:  python llm/evaluate.py [model]
 Example: python llm/evaluate.py gemma3:4b
 
-The vehicle field is free text, so it is shown but not scored.
+The vehicle field is free text, so it is not scored.
+On a failure, the raw facts from the LLM are printed, so you can see whether
+the LLM misread the message or a business rule gave the wrong result.
 """
 import json
 import statistics
@@ -50,6 +52,7 @@ def main():
             print(f"#{case['id']:>2} FAIL  {case['message'][:60]}")
             for w in wrong:
                 print(f"         {w}")
+            print(f"         facts from LLM: {got.get('facts')}")
         else:
             all_correct += 1
             print(f"#{case['id']:>2} ok")
