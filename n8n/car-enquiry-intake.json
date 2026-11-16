@@ -158,14 +158,14 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"vals_list\": [{\n    \"type\": \"lead\",\n    \"name\": {{ JSON.stringify(\"Enquiry - \" + $('Extract enquiry fields').item.json.name + \" - \" + $json.vehicle) }},\n    \"contact_name\": {{ JSON.stringify($('Extract enquiry fields').item.json.name) }},\n    \"phone\": {{ JSON.stringify($('Extract enquiry fields').item.json.phone) }},\n    \"expected_revenue\": {{ $json.budget_aed }},\n    \"description\": {{ JSON.stringify(\"<p>\" + $('Extract enquiry fields').item.json.message + \"</p><p>Auto-sorted: \" + $json.customer_type + \" | \" + $json.vehicle + \" | \" + $json.quantity + \" vehicle(s) | AED \" + $json.budget_aed + \" | \" + $json.destination_country + ($json.urgent ? \" | URGENT\" : \"\") + \"</p>\") }}\n  }]\n}",
+        "jsonBody": "={ \"vals_list\": [ {{ JSON.stringify($json.vals) }} ] }",
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
         928,
-        96
+        240
       ],
       "id": "98b2d037-bad3-427c-ac3a-f7dfb40ae23f",
       "name": "Create lead in Odoo",
@@ -225,11 +225,24 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        704,
-        256
+        400,
+        240
       ],
       "id": "33233eae-cc3d-4e34-a83a-f54b838d11ed",
       "name": "Classify enquiry"
+    },
+    {
+      "parameters": {
+        "jsCode": "// n8n Code node: \"Build Odoo lead\"  (Mode: Run Once for Each Item, JavaScript)\n// Turns the classifier's answer into the exact values Odoo needs for a new lead.\n\n// Odoo ids: run `python odoo/show_ids.py` and replace these three lines with its output.\n// Ids rarely change, so they are kept here as settings instead of looked up for every lead.\nconst TAG_IDS = { Buyer: 1, Distributor: 2, Importer: 3, Urgent: 4 };\nconst SOURCE_IDS = { web_form: 11, whatsapp: 12, email: 13, referral: 10 };\nconst SPAM_REASON_ID = 6;\n\n// Fail loudly if any id was not filled in, instead of creating leads with missing data.\nfor (const [key, id] of Object.entries({ ...TAG_IDS, ...SOURCE_IDS, spam_reason: SPAM_REASON_ID })) {\n  if (!id) throw new Error(`Odoo id for \"${key}\" is not set. Run odoo/show_ids.py.`);\n}\n\nconst c = $json;                                   // the classifier's answer\nconst f = $('Extract enquiry fields').item.json;   // the original enquiry\n\n// Odoo notes are HTML, so characters like < and > in a customer message must be escaped.\nconst esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');\n\nconst tagIds = [];\nif (TAG_IDS[c.customer_type]) tagIds.push(TAG_IDS[c.customer_type]);\nif (c.genuine && c.urgent) tagIds.push(TAG_IDS.Urgent);\n\nconst summary = c.genuine\n  ? `Auto-sorted: ${c.customer_type} | ${c.vehicle} | ${c.quantity} vehicle(s) | AED ${c.budget_aed} | ${c.destination_country}${c.urgent ? ' | URGENT' : ''}`\n  : 'Auto-sorted: not a genuine enquiry. Marked lost as spam.';\n\nconst vals = {\n  type: 'lead',\n  name: c.genuine ? `Enquiry - ${f.name} - ${c.vehicle}` : `Not genuine - ${f.name}`,\n  contact_name: f.name,\n  phone: f.phone,\n  expected_revenue: c.budget_aed,\n  description: `<p>${esc(f.message)}</p><p>${esc(summary)}</p>`,\n  tag_ids: [[6, 0, tagIds]],\n};\n\nif (SOURCE_IDS[f.source]) vals.source_id = SOURCE_IDS[f.source];\n\n// Spam is kept on record for reporting, but archived as lost so it never reaches the sales team.\nif (!c.genuine) {\n  vals.active = false;\n  vals.probability = 0;\n  vals.lost_reason_id = SPAM_REASON_ID;\n}\n\nreturn { json: { vals } };\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        576,
+        240
+      ],
+      "id": "8fcdb54c-0588-4fe3-97bc-df65ff53dcf7",
+      "name": "Code in JavaScript"
     }
   ],
   "pinData": {
@@ -253,8 +266,8 @@
             "type": "lead.created",
             "lead": {
               "name": "Test Buyer",
-              "phone": "+971500000010",
-              "message": "My brother's showroom in Mombasa needs 4 \"Land Cruiser 79\" pickups, budget AED 480k total",
+              "phone": "+971500000012",
+              "message": "Earn $500 daily from home, no experience needed. Reply YES now.",
               "source": "web_form"
             }
           },
@@ -320,6 +333,17 @@
       "main": [
         [
           {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
             "node": "Create lead in Odoo",
             "type": "main",
             "index": 0
@@ -333,7 +357,7 @@
     "executionOrder": "v1",
     "binaryMode": "separate"
   },
-  "versionId": "f78f2b6d-6940-48b0-a848-cfe59d08b0ce",
+  "versionId": "df057b59-d20c-4e91-94b0-12c12a059278",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "9ce06ae632f299344dc2086c56b7c51547f4e7110719b95ee7d1d76c156f466f"
