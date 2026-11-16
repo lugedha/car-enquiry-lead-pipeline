@@ -158,13 +158,13 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"vals_list\": [{\n    \"type\": \"lead\",\n    \"name\": \"Enquiry - {{ $('Extract enquiry fields').item.json.name }} (n8n test)\",\n    \"contact_name\": \"{{ $('Extract enquiry fields').item.json.name }}\",\n    \"phone\": \"{{ $('Extract enquiry fields').item.json.phone }}\",\n    \"description\": \"{{ $('Extract enquiry fields').item.json.message }}\"\n  }]\n}",
+        "jsonBody": "={\n  \"vals_list\": [{\n    \"type\": \"lead\",\n    \"name\": {{ JSON.stringify(\"Enquiry - \" + $('Extract enquiry fields').item.json.name + \" - \" + $json.vehicle) }},\n    \"contact_name\": {{ JSON.stringify($('Extract enquiry fields').item.json.name) }},\n    \"phone\": {{ JSON.stringify($('Extract enquiry fields').item.json.phone) }},\n    \"expected_revenue\": {{ $json.budget_aed }},\n    \"description\": {{ JSON.stringify(\"<p>\" + $('Extract enquiry fields').item.json.message + \"</p><p>Auto-sorted: \" + $json.customer_type + \" | \" + $json.vehicle + \" | \" + $json.quantity + \" vehicle(s) | AED \" + $json.budget_aed + \" | \" + $json.destination_country + ($json.urgent ? \" | URGENT\" : \"\") + \"</p>\") }}\n  }]\n}",
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        896,
+        928,
         96
       ],
       "id": "98b2d037-bad3-427c-ac3a-f7dfb40ae23f",
@@ -199,8 +199,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        896,
-        -96
+        928,
+        -144
       ],
       "id": "29c74886-ca0e-4c02-b9a6-0bbe6d3a1284",
       "name": "Add note to existing lead",
@@ -210,6 +210,26 @@
           "name": "Odoo API key"
         }
       }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://classifier:8000/classify",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"message\": {{ JSON.stringify($('Extract enquiry fields').item.json.message) }} }",
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        704,
+        256
+      ],
+      "id": "33233eae-cc3d-4e34-a83a-f54b838d11ed",
+      "name": "Classify enquiry"
     }
   ],
   "pinData": {
@@ -233,8 +253,8 @@
             "type": "lead.created",
             "lead": {
               "name": "Test Buyer",
-              "phone": "+971500000000",
-              "message": "Need 5 used Hilux pickups for export",
+              "phone": "+971500000010",
+              "message": "My brother's showroom in Mombasa needs 4 \"Land Cruiser 79\" pickups, budget AED 480k total",
               "source": "web_form"
             }
           },
@@ -289,6 +309,17 @@
         ],
         [
           {
+            "node": "Classify enquiry",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Classify enquiry": {
+      "main": [
+        [
+          {
             "node": "Create lead in Odoo",
             "type": "main",
             "index": 0
@@ -302,7 +333,7 @@
     "executionOrder": "v1",
     "binaryMode": "separate"
   },
-  "versionId": "a30a0193-fd6a-4f4a-a393-c1149a9115c3",
+  "versionId": "f78f2b6d-6940-48b0-a848-cfe59d08b0ce",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "9ce06ae632f299344dc2086c56b7c51547f4e7110719b95ee7d1d76c156f466f"

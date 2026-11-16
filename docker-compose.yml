@@ -14,7 +14,7 @@ services:
     depends_on:
       - db
     ports:
-      - "8069:8069"
+    - "127.0.0.1:8069:8069"
     environment:
       HOST: db
       USER: odoo
@@ -26,7 +26,7 @@ services:
   n8n:
     image: docker.n8n.io/n8nio/n8n:2.47.7
     ports:
-      - "5678:5678"
+      - "127.0.0.1:5678:5678"
     environment:
       GENERIC_TIMEZONE: Asia/Dubai
       TZ: Asia/Dubai
