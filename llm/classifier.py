@@ -3,14 +3,23 @@
 Design: the LLM only EXTRACTS facts from the message.
 Code then DECIDES the customer type and does any arithmetic,
 because rules and sums are things code never gets wrong.
+
+Version 3: the LLM lists each vehicle model with its own quantity and code adds
+them up, and code also checks the message for "each" / "per unit" phrases.
 """
 import json
 import os
+import re
 
 import requests
 
 OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434")
 DEFAULT_MODEL = "gemma3:4b"
+
+# Phrases that mean the budget is for each vehicle, not the total.
+# Code checks these as well as the LLM, because small models often miss them.
+PER_VEHICLE = re.compile(r"\b(each|per\s+(vehicle|unit|car|piece|pc)|a\s+(unit|piece))\b",
+                         re.IGNORECASE)
 
 UAE_NAMES = {"uae", "united arab emirates", "dubai", "abu dhabi", "sharjah",
              "ajman", "ras al khaimah", "fujairah", "umm al quwain"}
@@ -23,8 +32,10 @@ false for spam, adverts, job requests or anything not about buying vehicles.
 for_resale: true only if the vehicles will be sold on to other people
 (a showroom, dealer, trader or supplier). A company buying vehicles to use itself,
 such as a taxi or rental fleet, is NOT resale.
-vehicle: make and model, with the year if given. "Unknown" if none.
-quantity: add up every vehicle wanted. 1 if a vehicle is wanted but no number is given. 0 if none.
+vehicles: one entry for EVERY different model mentioned, each with its own quantity.
+"2 Harrier and 3 Prado" = two entries: Harrier 2, Prado 3.
+model is make and model with the year if given. quantity is 1 if no number is given.
+Empty list if no vehicle is mentioned.
 budget_amount: the money amount exactly as written, converted to a whole number of AED
 (250k = 250000, 1.2 million = 1200000). 0 if no amount is given.
 budget_per_vehicle: true only if the amount is for each vehicle ("each", "per unit", "per car").
@@ -37,14 +48,21 @@ SCHEMA = {
     "properties": {
         "genuine": {"type": "boolean"},
         "for_resale": {"type": "boolean"},
-        "vehicle": {"type": "string"},
-        "quantity": {"type": "integer"},
+        "vehicles": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {"model": {"type": "string"},
+                               "quantity": {"type": "integer"}},
+                "required": ["model", "quantity"],
+            },
+        },
         "budget_amount": {"type": "integer"},
         "budget_per_vehicle": {"type": "boolean"},
         "destination_country": {"type": "string"},
         "urgent": {"type": "boolean"},
     },
-    "required": ["genuine", "for_resale", "vehicle", "quantity", "budget_amount",
+    "required": ["genuine", "for_resale", "vehicles", "budget_amount",
                  "budget_per_vehicle", "destination_country", "urgent"],
 }
 
@@ -63,7 +81,7 @@ def extract_facts(message, model=DEFAULT_MODEL):
     return json.loads(r.json()["message"]["content"])
 
 
-def apply_rules(facts):
+def apply_rules(facts, message=""):
     """Turn extracted facts into the final lead fields using fixed business rules."""
     if not facts["genuine"]:
         return {"customer_type": "Unknown", "vehicle": "Unknown", "quantity": 0,
@@ -81,12 +99,15 @@ def apply_rules(facts):
     else:
         customer_type = "Importer"
 
-    quantity = max(facts["quantity"], 1)
+    vehicles = [v for v in facts["vehicles"] if v["model"].strip()]
+    quantity = max(sum(max(v["quantity"], 1) for v in vehicles), 1)
+    vehicle = ", ".join(f'{max(v["quantity"], 1)} x {v["model"]}' for v in vehicles) or "Unknown"
+
     budget = facts["budget_amount"]
-    if facts["budget_per_vehicle"]:
+    if facts["budget_per_vehicle"] or PER_VEHICLE.search(message):
         budget *= quantity
 
-    return {"customer_type": customer_type, "vehicle": facts["vehicle"],
+    return {"customer_type": customer_type, "vehicle": vehicle,
             "quantity": quantity, "budget_aed": budget,
             "destination_country": country, "urgent": facts["urgent"],
             "genuine": True}
@@ -95,7 +116,7 @@ def apply_rules(facts):
 def classify(message, model=DEFAULT_MODEL):
     """Return the final lead fields, plus the raw facts under 'facts' for checking."""
     facts = extract_facts(message, model)
-    result = apply_rules(facts)
+    result = apply_rules(facts, message)
     result["facts"] = facts
     return result
 
