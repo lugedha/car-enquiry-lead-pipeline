@@ -1,0 +1,77 @@
+{
+  "name": "Error alerts",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "53068499-a468-4f40-928b-6df89a4123ed",
+      "name": "Error Trigger"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://odoo:8069/json/2/discuss.channel/message_post",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Odoo-Database",
+              "value": "cars_demo"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"ids\": [4],\n  \"body\": {{ JSON.stringify(\"Workflow failed: \" + $json.workflow.name + \" | Step: \" + $json.execution.lastNodeExecuted + \" | Error: \" + $json.execution.error.message + \" | Open: \" + $json.execution.url) }},\n  \"message_type\": \"comment\",\n  \"subtype_xmlid\": \"mail.mt_comment\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        224,
+        0
+      ],
+      "id": "127e8bcd-aace-4d8e-ad43-7e16891a3bf8",
+      "name": "Post alert to Odoo",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "BHkPs6gvP069ev1c",
+          "name": "Odoo API key"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Error Trigger": {
+      "main": [
+        [
+          {
+            "node": "Post alert to Odoo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "07e7e10b-83b5-46d8-a407-76e8cd28efc0",
+  "meta": {
+    "instanceId": "9ce06ae632f299344dc2086c56b7c51547f4e7110719b95ee7d1d76c156f466f"
+  },
+  "nodeGroups": [],
+  "id": "85lT59fZ4rIxdVD6",
+  "tags": []
+}

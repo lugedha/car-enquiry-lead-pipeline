@@ -100,6 +100,8 @@
       "id": "ac3dec23-ac70-406a-ba50-31c390c2f287",
       "name": "Find open lead in Odoo",
       "alwaysOutputData": true,
+      "retryOnFail": true,
+      "waitBetweenTries": 5000,
       "credentials": {
         "httpHeaderAuth": {
           "id": "BHkPs6gvP069ev1c",
@@ -229,7 +231,9 @@
         240
       ],
       "id": "33233eae-cc3d-4e34-a83a-f54b838d11ed",
-      "name": "Classify enquiry"
+      "name": "Classify enquiry",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000
     },
     {
       "parameters": {
@@ -355,9 +359,13 @@
   "active": true,
   "settings": {
     "executionOrder": "v1",
-    "binaryMode": "separate"
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "85lT59fZ4rIxdVD6",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
   },
-  "versionId": "f8b267f4-c0c3-4158-b4db-b468aef249e1",
+  "versionId": "2388f5e1-ac11-4357-94a8-ad21fe23a1e4",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "9ce06ae632f299344dc2086c56b7c51547f4e7110719b95ee7d1d76c156f466f"
