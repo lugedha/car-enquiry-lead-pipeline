@@ -52,8 +52,23 @@ services:
       - ollama
     restart: unless-stopped
 
+  analytics-db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: analytics
+      POSTGRES_USER: analytics
+      POSTGRES_PASSWORD: ${ANALYTICS_DB_PASSWORD}
+      POWERBI_READER_PASSWORD: ${POWERBI_READER_PASSWORD}
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - analytics-db-data:/var/lib/postgresql/data
+      - ./analytics/init:/docker-entrypoint-initdb.d:ro
+    restart: unless-stopped
+
 volumes:
   odoo-db-data:
   odoo-web-data:
   n8n-data:
   ollama-data:
+  analytics-db-data:
