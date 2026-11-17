@@ -1,6 +1,32 @@
 {
-  "name": "Car enquiry form",
+  "name": "Car enquiry web form",
   "nodes": [
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:5678/webhook/car-enquiry",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"event_id\": {{ JSON.stringify('form-' + $execution.id) }},\n  \"type\": \"lead.created\",\n  \"lead\": {\n    \"name\": {{ JSON.stringify($json.Name) }},\n    \"phone\": {{ JSON.stringify($json.Phone) }},\n    \"message\": {{ JSON.stringify($json.Message) }},\n    \"source\": \"web_form\"\n  }\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        224,
+        0
+      ],
+      "id": "bfca0766-0cd5-4d0f-ac51-3522393df686",
+      "name": "Send to intake webhook",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "Xj0IhzlEkYRcUTz3",
+          "name": "Header Auth account"
+        }
+      }
+    },
     {
       "parameters": {
         "formTitle": "Desert Motors Trading – Car enquiry",
@@ -37,39 +63,13 @@
         0
       ],
       "id": "e7e9cfbd-380f-4b08-9f32-0f34a9e7761d",
-      "name": "Desert Motors Trading – Car enquiry",
+      "name": "Car enquiry form",
       "webhookId": "d9c63072-7fda-40ac-b987-41fdeca06316"
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "http://localhost:5678/webhook/car-enquiry",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={\n  \"event_id\": {{ JSON.stringify('form-' + $execution.id) }},\n  \"type\": \"lead.created\",\n  \"lead\": {\n    \"name\": {{ JSON.stringify($json.Name) }},\n    \"phone\": {{ JSON.stringify($json.Phone) }},\n    \"message\": {{ JSON.stringify($json.Message) }},\n    \"source\": \"web_form\"\n  }\n}",
-        "options": {}
-      },
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.5,
-      "position": [
-        224,
-        0
-      ],
-      "id": "bfca0766-0cd5-4d0f-ac51-3522393df686",
-      "name": "Send to intake webhook",
-      "credentials": {
-        "httpHeaderAuth": {
-          "id": "Xj0IhzlEkYRcUTz3",
-          "name": "Header Auth account"
-        }
-      }
     }
   ],
   "pinData": {},
   "connections": {
-    "Desert Motors Trading – Car enquiry": {
+    "Car enquiry form": {
       "main": [
         [
           {
@@ -90,7 +90,7 @@
     "callerPolicy": "workflowsFromSameOwner",
     "availableInMCP": false
   },
-  "versionId": "9a2914fc-ff20-484d-95b2-e516dc241fa1",
+  "versionId": "e6a37c16-d044-4069-bd32-e42c1becdc16",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "9ce06ae632f299344dc2086c56b7c51547f4e7110719b95ee7d1d76c156f466f"
