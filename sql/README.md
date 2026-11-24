@@ -23,5 +23,7 @@ All views count **genuine leads only** (spam is left out).
 | | `v_lost_reasons` | reason | Lost deals by reason, with share of total |
 | | `v_stage_visits` | stage visit | When a lead entered and left each stage |
 | | `v_time_in_stage` | stage | Median days spent in each stage |
+| `05_powerbi_model.sql` | `v_pbi_leads` | lead | Everything Power BI needs about a lead, with Dubai-time dates |
+| | `v_pbi_stage_visits` | stage visit | Stage visits with Dubai times and days in stage |
 
 Reply times are clock time, not business hours. The history is synthetic, so the patterns repeat the generator's assumptions (see `analytics/generate_history.py`).

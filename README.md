@@ -38,9 +38,17 @@ flowchart LR
 | n8n intake, web form and error alert workflows | Done |
 | Classifier API with local model | Done ([evaluation](docs/llm-evaluation.md)) |
 | Analytics database with 6 months of synthetic history | Done |
-| SQL views for funnel and response-time metrics | In progress |
-| Power BI dashboard | Planned |
+| SQL views for funnel, conversion, response time and lost deals | Done ([views](sql/README.md)) |
+| Power BI dashboard: funnel, response time and lost deals | Done ([measures](powerbi/README.md)) |
 | Daily sync from Odoo to the analytics database | Planned |
+
+## Dashboard
+
+![Funnel page](docs/images/dashboard-funnel.png)
+
+![Response time and lost deals page](docs/images/dashboard-response-lost.png)
+
+What the synthetic history shows (patterns built into the generator, not findings): leads answered within 15 minutes were won 15.5% of the time, against 2.7% for replies after 4 hours; "No response" and "Bought elsewhere" make up about 70% of lost deals; deals wait longest at Vehicle Sourced / Inspection (median 5.4 days).
 
 ## Classifier results
 
@@ -76,7 +84,8 @@ All ports are bound to `127.0.0.1`, so nothing is exposed outside your machine.
 | `n8n/` | Exported workflows and the Code node script |
 | `llm/` | Classifier, API, Dockerfile and test cases |
 | `analytics/` | Reporting database schema, read-only Power BI role, history generator |
-| `sql/`, `powerbi/` | Reporting views and dashboard (in progress) |
+| `sql/` | Reporting views, including the two shaped for Power BI |
+| `powerbi/` | Measure definitions and dashboard notes (the `.pbix` itself is not committed) |
 
 ## Personal data
 
