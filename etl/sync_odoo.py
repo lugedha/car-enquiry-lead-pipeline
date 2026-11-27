@@ -14,7 +14,6 @@ Each run writes one line to logs/etl.log. A failure posts an alert to the Odoo c
 ODOO_ALERT_CHANNEL_ID, once (not on every failed run); the first success after it posts "recovered".
 """
 import argparse
-import html
 import json
 import logging
 import logging.handlers
@@ -42,6 +41,11 @@ ALERT_CHANNEL_ID = int(os.environ.get("ODOO_ALERT_CHANNEL_ID", "0"))  # 0 = no a
 LOG_FILE = Path(__file__).resolve().parent.parent / "logs" / "etl.log"
 
 log = logging.getLogger("etl")
+
+
+def one_line(error):
+    """Database errors span several lines; the log keeps one line per event."""
+    return " | ".join(line.strip() for line in str(error).splitlines() if line.strip())
 
 
 def setup_logging():
@@ -350,7 +354,7 @@ def log_failure(started_at, error):
                          (started_at, str(error)[:2000]))
             return previous
     except Exception as e:
-        log.error(f"could not write the failure to etl_runs: {e}")
+        log.error(f"could not write the failure to etl_runs: {one_line(e)}")
         return None
 
 
@@ -361,11 +365,11 @@ def send_alert(text):
         return
     try:
         odoo("discuss.channel", "message_post", retries=1, ids=[ALERT_CHANNEL_ID],
-             body=f"<p>{html.escape(text)}</p>", message_type="comment",
+             body=text[:300], message_type="comment",   # plain text: Odoo escapes it itself
              subtype_xmlid="mail.mt_comment")
         log.info("alert posted to Odoo")
     except Exception as e:   # Odoo itself may be the thing that is down
-        log.error(f"could not post the alert: {e}")
+        log.error(f"could not post the alert: {one_line(e)}")
 
 
 def print_dry_run(result):
@@ -408,7 +412,7 @@ def main():
             send_alert(f"ETL sync recovered at {started_at:%Y-%m-%d %H:%M} UTC.")
     except Exception as e:
         previous = log_failure(started_at, e)
-        error = " | ".join(str(e).split("\n"))     # one line per event in the log
+        error = one_line(e)
         log.error(f"FAILED  {error}")
         if previous != "failed":   # alert once when it breaks, not on every failed run
             send_alert(f"ETL sync failed at {started_at:%Y-%m-%d %H:%M} UTC: {error}")
