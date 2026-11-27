@@ -10,13 +10,19 @@ Run:
 
 Needs the run-log table: analytics/migrations/001_etl_runs.sql
 Exit code 0 = success, 1 = failed (the failure is also written to etl_runs).
+Each run writes one line to logs/etl.log. A failure posts an alert to the Odoo channel
+ODOO_ALERT_CHANNEL_ID, once (not on every failed run); the first success after it posts "recovered".
 """
 import argparse
+import html
 import json
+import logging
+import logging.handlers
 import os
 import sys
 import time
 from datetime import datetime, timezone
+from pathlib import Path
 
 import psycopg
 import requests
@@ -32,6 +38,24 @@ INCLUDE_ARCHIVED = {"active_test": False}   # lost leads are archived in Odoo
 SPAM_REASON = "Not genuine / spam"
 CUSTOMER_TYPES = {"Buyer", "Distributor", "Importer"}
 KNOWN_SOURCES = {"Web form", "WhatsApp", "Email", "Referral"}
+ALERT_CHANNEL_ID = int(os.environ.get("ODOO_ALERT_CHANNEL_ID", "0"))  # 0 = no alerts
+LOG_FILE = Path(__file__).resolve().parent.parent / "logs" / "etl.log"
+
+log = logging.getLogger("etl")
+
+
+def setup_logging():
+    """One line per event, in UTC, to logs/etl.log (rotated at 1 MB, 5 old files kept) and to the screen."""
+    LOG_FILE.parent.mkdir(exist_ok=True)
+    fmt = logging.Formatter("%(asctime)sZ %(levelname)-7s %(message)s", "%Y-%m-%d %H:%M:%S")
+    fmt.converter = time.gmtime
+    file_handler = logging.handlers.RotatingFileHandler(LOG_FILE, maxBytes=1_000_000, backupCount=5,
+                                                        encoding="utf-8")
+    screen_handler = logging.StreamHandler()
+    for handler in (file_handler, screen_handler):
+        handler.setFormatter(fmt)
+        log.addHandler(handler)
+    log.setLevel(logging.INFO)
 LEAD_FIELDS = ["id", "type", "create_date", "write_date", "date_conversion", "date_closed",
                "stage_id", "active", "lost_reason_id", "source_id", "tag_ids", "expected_revenue"]
 
@@ -311,14 +335,37 @@ def load(conn, result, started_at):
     return len(leads), len(events), deleted
 
 
+def last_status(conn):
+    row = conn.execute("SELECT status FROM etl_runs ORDER BY run_id DESC LIMIT 1").fetchone()
+    return row[0] if row else None
+
+
 def log_failure(started_at, error):
-    """Written in its own connection, because the run's transaction was rolled back."""
+    """Write the failure in its own connection (the run's transaction was rolled back).
+    Returns the status of the run before this one, or None if the database can't be reached."""
     try:
         with connect() as conn:
+            previous = last_status(conn)
             conn.execute("INSERT INTO etl_runs (started_at, status, error) VALUES (%s, 'failed', %s)",
                          (started_at, str(error)[:2000]))
+            return previous
     except Exception as e:
-        print(f"Could not write the failure to etl_runs: {e}", file=sys.stderr)
+        log.error(f"could not write the failure to etl_runs: {e}")
+        return None
+
+
+def send_alert(text):
+    """Post a message to the Odoo alert channel. A write, so it is tried once, never retried."""
+    if not ALERT_CHANNEL_ID:
+        log.warning("no ODOO_ALERT_CHANNEL_ID set; alert not sent")
+        return
+    try:
+        odoo("discuss.channel", "message_post", retries=1, ids=[ALERT_CHANNEL_ID],
+             body=f"<p>{html.escape(text)}</p>", message_type="comment",
+             subtype_xmlid="mail.mt_comment")
+        log.info("alert posted to Odoo")
+    except Exception as e:   # Odoo itself may be the thing that is down
+        log.error(f"could not post the alert: {e}")
 
 
 def print_dry_run(result):
@@ -346,17 +393,25 @@ def main():
         print_dry_run(extract_and_transform(args.since, args.since_message_id))
         return
 
+    setup_logging()
     started_at = datetime.now(timezone.utc)
     try:
         with connect() as conn:
+            previous = last_status(conn)
             since, since_message_id = (None, None) if args.full else last_watermarks(conn)
             result = extract_and_transform(since, since_message_id)
             upserted, written, deleted = load(conn, result, started_at)
-        print(f"{started_at:%Y-%m-%d %H:%M:%S}Z  success  since={since}  leads={upserted}  "
-              f"events={written}  deleted={deleted}  watermarks={result['watermarks']}")
+        shown = f" {deleted}" if 0 < len(deleted) <= 10 else ""
+        log.info(f"success  since={since}  leads={upserted}  events={written}  "
+                 f"deleted={len(deleted)}{shown}  watermarks={result['watermarks']}")
+        if previous == "failed":
+            send_alert(f"ETL sync recovered at {started_at:%Y-%m-%d %H:%M} UTC.")
     except Exception as e:
-        log_failure(started_at, e)
-        print(f"{started_at:%Y-%m-%d %H:%M:%S}Z  FAILED  {e}", file=sys.stderr)
+        previous = log_failure(started_at, e)
+        error = " | ".join(str(e).split("\n"))     # one line per event in the log
+        log.error(f"FAILED  {error}")
+        if previous != "failed":   # alert once when it breaks, not on every failed run
+            send_alert(f"ETL sync failed at {started_at:%Y-%m-%d %H:%M} UTC: {error}")
         sys.exit(1)
 
 
